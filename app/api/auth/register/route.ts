@@ -33,9 +33,27 @@ export async function POST(req: NextRequest) {
       hospitalName,
     });
 
+    // ── Notify mammo-global about this hospital ──────────────────────────
+    const globalUrl = process.env.GLOBAL_SERVER_URL || 'http://localhost:3001';
+    const hospitalId = hospitalName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    try {
+      await fetch(`${globalUrl}/api/hospitals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hospitalId,
+          name: hospitalName,
+          location: hospitalName, // use hospital name as location
+        }),
+        signal: AbortSignal.timeout(3000),
+      });
+    } catch {
+      console.log('mammo-global offline — hospital will sync on next heartbeat');
+    }
+
     // Sign JWT
     const token = jwt.sign(
-      { doctorId: doctor._id.toString(), email: doctor.email, name: doctor.name },
+      { doctorId: doctor._id.toString(), email: doctor.email, name: doctor.name, hospitalName: doctor.hospitalName },
       JWT_SECRET,
       { expiresIn: '7d' }
     );

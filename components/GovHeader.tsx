@@ -43,7 +43,7 @@ export default function GovHeader() {
         </div>
 
         {/* Right: User info */}
-        {doctorName && (
+        {doctorName ? (
           <div className="text-right text-sm text-white flex items-center gap-3">
             <div>
               <div className="font-semibold text-orange-200">Dr. {doctorName}</div>
@@ -52,9 +52,19 @@ export default function GovHeader() {
             <button
               onClick={handleLogout}
               className="text-xs bg-gov-orange hover:bg-gov-orange-dark text-white px-3 py-1.5 font-semibold transition-colors"
-              style={{ borderRadius: '2px' }}
+              style={{ borderRadius: '2px', background: '#f7941d' }}
             >
               Logout
+            </button>
+          </div>
+        ) : (
+          <div className="text-right text-sm text-white flex items-center gap-3">
+            <button
+              onClick={() => router.push('/login')}
+              className="text-xs bg-gov-orange hover:bg-gov-orange-dark text-white px-4 py-2 font-semibold transition-colors"
+              style={{ borderRadius: '2px', background: '#f7941d' }}
+            >
+              Login
             </button>
           </div>
         )}

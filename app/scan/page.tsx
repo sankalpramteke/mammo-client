@@ -21,6 +21,9 @@ export default function ScanPage() {
     malignantProb: string;
     savedPatientId?: string;
   } | null>(null);
+  const [confirmedDiagnosis, setConfirmedDiagnosis] = useState<'benign' | 'malignant' | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmDone, setConfirmDone] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -276,6 +279,26 @@ export default function ScanPage() {
                   })}
                 </div>
 
+                {/* AI Recommendations Section */}
+                <div className="mb-4 p-4 text-left rounded-sm" style={{ background: '#f8fbff', border: '1px solid #c8d0dc', borderLeft: `4px solid ${isMalignant ? '#dc3545' : '#28a745'}` }}>
+                  <h4 className="font-bold text-sm mb-2" style={{ color: '#1a3a6b' }}>AI Recommendations</h4>
+                  {isMalignant ? (
+                    <ul className="text-xs text-gray-700 list-disc pl-4 space-y-1">
+                      <li><strong>Immediate Action Required:</strong> Schedule an urgent biopsy to confirm findings.</li>
+                      <li>Consult with an oncologist for further evaluation.</li>
+                      <li>Conduct additional imaging (e.g., MRI or ultrasound) as necessary.</li>
+                      <li>Notify the patient and schedule a follow-up appointment within 48 hours.</li>
+                    </ul>
+                  ) : (
+                    <ul className="text-xs text-gray-700 list-disc pl-4 space-y-1">
+                      <li><strong>Routine Follow-up:</strong> No immediate signs of malignancy detected.</li>
+                      <li>Continue with standard annual mammogram screening.</li>
+                      <li>Advise the patient to maintain regular self-examinations.</li>
+                      <li>Review patient history for any other risk factors.</li>
+                    </ul>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <button onClick={printReport} className="py-2 text-xs font-bold text-white"
                     style={{ background: '#2c5f9e', border: '1px solid #1a3a6b', borderRadius: '2px' }}>
@@ -286,6 +309,54 @@ export default function ScanPage() {
                     📋 View History
                   </button>
                 </div>
+
+                {/* ── Step A: Confirm Diagnosis for FL ──────────────────── */}
+                {!confirmDone ? (
+                  <div className="p-3 rounded-sm" style={{ background: '#eef4ff', border: '2px solid #2c5f9e' }}>
+                    <div className="font-bold text-xs mb-1" style={{ color: '#1a3a6b' }}>🤖 Federated Learning — Confirm True Diagnosis</div>
+                    <p className="text-xs text-gray-600 mb-2">Doctor: confirm the correct diagnosis to improve the global AI model. Your images stay private — only model weights are shared.</p>
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => setConfirmedDiagnosis('benign')}
+                        className="flex-1 py-1.5 text-xs font-bold rounded-sm"
+                        style={{ background: confirmedDiagnosis === 'benign' ? '#155724' : '#d4edda', color: confirmedDiagnosis === 'benign' ? 'white' : '#155724', border: '1px solid #c3e6cb' }}>
+                        ✅ BENIGN
+                      </button>
+                      <button
+                        onClick={() => setConfirmedDiagnosis('malignant')}
+                        className="flex-1 py-1.5 text-xs font-bold rounded-sm"
+                        style={{ background: confirmedDiagnosis === 'malignant' ? '#721c24' : '#f8d7da', color: confirmedDiagnosis === 'malignant' ? 'white' : '#721c24', border: '1px solid #f5c6cb' }}>
+                        🔴 MALIGNANT
+                      </button>
+                    </div>
+                    <button
+                      disabled={!confirmedDiagnosis || confirmLoading}
+                      onClick={async () => {
+                        if (!confirmedDiagnosis || !result) return;
+                        setConfirmLoading(true);
+                        try {
+                          await axios.post('/api/confirm-scan', {
+                            patientId: result.savedPatientId,
+                            aiPrediction: result.prediction.toLowerCase(),
+                            confirmedLabel: confirmedDiagnosis,
+                            confidence: result.confidence,
+                          }, { headers: authHeaders() });
+                          setConfirmDone(true);
+                          toast.success('Diagnosis confirmed! Queued for FL training.');
+                        } catch { toast.error('Failed to save confirmation.'); }
+                        finally { setConfirmLoading(false); }
+                      }}
+                      className="w-full py-1.5 text-xs font-bold text-white rounded-sm"
+                      style={{ background: confirmedDiagnosis ? '#1a3a6b' : '#8a9bb5', border: 'none', cursor: confirmedDiagnosis ? 'pointer' : 'not-allowed' }}>
+                      {confirmLoading ? 'Saving...' : '📡 Submit Confirmation for FL Training'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-sm text-center" style={{ background: '#d4edda', border: '1px solid #c3e6cb' }}>
+                    <div className="font-bold text-sm text-green-800">✅ Diagnosis Confirmed!</div>
+                    <p className="text-xs text-green-700 mt-1">This scan has been queued for the next Federated Learning training round. The global model will improve using your hospital's knowledge — without sharing any patient images.</p>
+                  </div>
+                )}
 
                 <div className="p-2.5 text-xs"
                   style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '2px', color: '#856404' }}>

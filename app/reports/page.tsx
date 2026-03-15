@@ -137,7 +137,7 @@ function ReportsContent() {
         className="mb-4 p-3 text-xs"
         style={{ background: '#e8f4f8', border: '1px solid #b8d8e8', borderLeft: '4px solid #2c5f9e', borderRadius: '2px', color: '#1a3a6b' }}
       >
-        ℹ️ Reports are generated from MongoDB scan records. Click "Generate Report" to open a printable PDF.
+        ℹ️ Reports are generated from MongoDB scan records. Click &quot;Generate Report&quot; to open a printable PDF.
       </div>
 
       <div style={{ background: 'white', border: '1px solid #c8d0dc', borderTop: '3px solid #2c5f9e' }}>
