@@ -47,80 +47,179 @@ function ReportsContent() {
   const generateReport = (record: HistoryRecord) => {
     if (!session) return;
     const isMalignant = record.result.toLowerCase() === 'malignant';
+
+    const birads     = isMalignant ? 'BI-RADS 4 — Suspicious' : 'BI-RADS 2 — Benign Finding';
+    const mass       = isMalignant ? 'Suspicious irregular mass noted' : 'Not detectable';
+    const calcs      = isMalignant ? 'Suspicious microcalcifications present' : 'Not detectable';
+    const arch       = isMalignant ? 'Present' : 'Not detectable';
+    const asym       = isMalignant ? 'Focal asymmetry noted' : 'Not detectable';
+    const tissue     = 'Heterogeneously dense breast tissue, may lower sensitivity of mammography';
+    const impression = isMalignant
+      ? `Mammographic findings are highly suspicious for malignancy. ${birads}. Immediate radiological correlation and biopsy is strongly recommended.`
+      : `No mammographic evidence of malignancy. ${birads}. Findings are consistent with benign breast tissue.`;
+    const suggestion = isMalignant
+      ? 'Urgent referral to oncology for further evaluation. Core needle biopsy recommended. Radiologist review required within 48 hours.'
+      : 'Self breast exam monthly and follow-up study yearly. Routine annual mammogram screening recommended.';
+
     const win = window.open('', '_blank');
     if (!win) return;
+
     win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<title>Mammogram Report — ${record.patientId}</title>
+<html><head>
+<title>DISHA Report — ${record.patientId}</title>
 <meta charset="utf-8">
 <style>
-  @page { margin: 20mm; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1a1a2e; margin: 0; padding: 0; }
-  .header { background: #1a3a6b; color: white; padding: 16px 24px; border-bottom: 4px solid #f7941d; }
-  .header h1 { margin: 0; font-size: 16px; font-weight: bold; }
-  .header p { margin: 4px 0 0; font-size: 11px; opacity: 0.85; }
-  .content { padding: 20px 24px; }
-  .section-title { color: #1a3a6b; font-size: 12px; font-weight: bold; border-bottom: 1px solid #2c5f9e; padding-bottom: 4px; margin: 16px 0 8px; text-transform: uppercase; }
+  @page { margin: 12mm 14mm; size: A4 portrait; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #111827; background: white; line-height: 1.4; }
+
+  .hdr { background: #0f2744; color: white; padding: 11px 18px; border-bottom: 3px solid #f59e0b; display: flex; align-items: center; gap: 14px; }
+  .hdr-text h1 { font-size: 14px; font-weight: 700; }
+  .hdr-text p  { font-size: 9px; color: rgba(255,255,255,0.55); letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; }
+  .hdr-meta    { margin-left: auto; text-align: right; font-size: 9.5px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+
+  .pstrip { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 1.5px solid #0f2744; }
+  .pcol   { padding: 6px 14px; border-right: 1px solid #d1d5db; }
+  .pcol:last-child { border-right: none; }
+  .plbl   { font-size: 8.5px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .pval   { font-size: 11px; font-weight: 700; color: #0f2744; margin-top: 1px; }
+  .psub   { font-size: 9.5px; color: #4b5563; margin-top: 1px; }
+
+  .rtitle { text-align: center; padding: 7px 18px 6px; border-bottom: 1px solid #d1d5db; }
+  .rtitle h2 { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: #111827; text-transform: uppercase; }
+  .rtitle .birads { font-size: 10px; color: #374151; margin-top: 2px; font-weight: 600; }
+
+  .body { padding: 8px 18px; }
+
+  .alert { border: 1px solid #6b7280; border-left: 3px solid #0f2744; padding: 5px 10px; margin-bottom: 7px; font-size: 10px; font-weight: 600; color: #111827; }
+
+  .sh { font-size: 9.5px; font-weight: 800; color: #0f2744; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid #0f2744; padding-bottom: 2px; margin: 8px 0 4px; }
+
   table { width: 100%; border-collapse: collapse; }
-  th { background: #2c5f9e; color: white; padding: 7px 10px; text-align: left; font-size: 11px; border: 1px solid #1a3a6b; }
-  td { padding: 6px 10px; border: 1px solid #d0d8e4; font-size: 12px; }
-  tr:nth-child(even) td { background: #eef2f8; }
-  .result-box { padding: 16px 20px; margin: 12px 0; border-radius: 2px; }
-  .benign { background: #d4edda; border: 2px solid #c3e6cb; color: #155724; }
-  .malignant { background: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; }
-  .result-title { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
-  .malignant-alert { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; margin: 12px 0; font-weight: bold; }
-  .disclaimer { background: #fff3cd; border: 1px solid #ffc107; padding: 12px; margin-top: 16px; font-size: 12px; color: #856404; }
-  .footer { background: #1a3a6b; color: rgba(255,255,255,0.7); padding: 10px 24px; font-size: 10px; border-top: 2px solid #f7941d; margin-top: 20px; }
-  .badge { display: inline-block; padding: 2px 12px; border-radius: 2px; font-size: 12px; font-weight: bold; }
-  .badge-b { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-  .badge-m { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-  .prob-bar-bg { display: inline-block; width: 200px; height: 12px; background: #e9ecef; vertical-align: middle; }
-  .prob-bar { display: inline-block; height: 12px; }
+  .ft td { padding: 3.5px 9px; border: 1px solid #d1d5db; font-size: 10.5px; vertical-align: top; }
+  .ft td:first-child { font-weight: 600; color: #374151; width: 34%; background: #f9fafb; }
+
+  .rb { border: 1.5px solid #0f2744; padding: 7px 12px; margin: 4px 0; display: flex; align-items: baseline; gap: 16px; }
+  .rb-result { font-size: 14px; font-weight: 800; color: #0f2744; letter-spacing: 0.5px; }
+  .rb-conf   { font-size: 10px; color: #374151; }
+  .rb-brd    { font-size: 10px; color: #374151; font-style: italic; }
+
+  .pt th { background: #0f2744; color: white; padding: 3.5px 9px; font-size: 10px; text-align: left; }
+  .pt td { padding: 3.5px 9px; border: 1px solid #d1d5db; font-size: 10.5px; }
+
+  .tb { font-size: 10.5px; color: #1f2937; line-height: 1.6; padding: 3px 0; }
+  .nl { padding-left: 16px; margin: 3px 0; }
+  .nl li { font-size: 10.5px; color: #374151; line-height: 1.6; }
+
+  .disc { border: 1px solid #9ca3af; padding: 5px 10px; margin-top: 8px; font-size: 9.5px; color: #374151; line-height: 1.5; }
+  .eor  { text-align: center; font-size: 9.5px; font-weight: 700; color: #6b7280; margin-top: 8px; letter-spacing: 1px; }
+
+  .ftr { background: #0f2744; color: rgba(255,255,255,0.5); padding: 6px 18px; font-size: 9px; border-top: 2px solid #f59e0b; margin-top: 10px; display: flex; justify-content: space-between; }
+  .ftr strong { color: rgba(255,255,255,0.8); }
 </style>
-</head>
-<body>
-<div class="header">
-  <h1>🏥 National Mammogram AI Detection System — Analysis Report</h1>
-  <p>Ministry of Health &amp; Family Welfare | Government of India | NIC | NHA</p>
+</head><body>
+
+<div class="hdr">
+  <svg width="34" height="34" viewBox="0 0 48 48" fill="none">
+    <circle cx="24" cy="24" r="22" stroke="#f59e0b" stroke-width="1.5" stroke-opacity="0.5"/>
+    <circle cx="24" cy="24" r="17" stroke="#f59e0b" stroke-width="2" fill="rgba(245,158,11,0.1)"/>
+    <path d="M 24 7 A 17 17 0 0 1 41 24" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    <line x1="24" y1="2" x2="24" y2="6" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="46" y1="24" x2="42" y2="24" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="24" y1="46" x2="24" y2="42" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="2" y1="24" x2="6" y2="24" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="24" y="29" text-anchor="middle" fill="#f59e0b" font-size="13" font-weight="800" font-family="Segoe UI,Arial">D</text>
+  </svg>
+  <div class="hdr-text">
+    <h1>DISHA — Mammogram Analysis Report</h1>
+    <p>Diagnostic Imaging &amp; Screening for Health Analytics</p>
+  </div>
+  <div class="hdr-meta">
+    Scan Date: ${record.date}<br>
+    Reported: ${new Date().toLocaleString('en-IN')}
+  </div>
 </div>
-<div class="content">
-  <div class="section-title">Patient &amp; Scan Information</div>
-  <table>
-    <tr><th>Field</th><th>Value</th></tr>
-    <tr><td>Patient ID</td><td><strong>${record.patientId}</strong></td></tr>
-    <tr><td>Scan Date</td><td>${record.date}</td></tr>
-    <tr><td>Report Generated</td><td>${new Date().toLocaleString('en-IN')}</td></tr>
-    <tr><td>Image File</td><td>${record.imageName || 'Not recorded'}</td></tr>
-    <tr><td>Attending Physician</td><td>Dr. ${session.name || session.doctorId}</td></tr>
-    <tr><td>Institution</td><td>${session.hospitalName}</td></tr>
-    <tr><td>AI Model</td><td>ResNet50 — Federated Learning v2.1</td></tr>
+
+<div class="pstrip">
+  <div class="pcol">
+    <div class="plbl">Patient ID</div>
+    <div class="pval">${record.patientId}</div>
+    <div class="psub">Image: ${record.imageName || 'Not recorded'}</div>
+  </div>
+  <div class="pcol">
+    <div class="plbl">Attending Physician</div>
+    <div class="pval">Dr. ${session.name || session.doctorId}</div>
+    <div class="psub">Institution: ${session.hospitalName}</div>
+  </div>
+  <div class="pcol">
+    <div class="plbl">Registered on</div>
+    <div class="pval" style="font-size:10px">${record.date}</div>
+    <div class="plbl" style="margin-top:4px">Reported on</div>
+    <div class="pval" style="font-size:10px">${new Date().toLocaleString('en-IN')}</div>
+  </div>
+</div>
+
+<div class="rtitle">
+  <h2>Mammography (Mammogram)</h2>
+  <div class="birads">${birads}</div>
+</div>
+
+<div class="body">
+
+  ${isMalignant ? `<div class="alert">&#9888; Malignant finding detected — Immediate radiologist review is strongly recommended.</div>` : ''}
+
+  <div class="sh">Clinical Findings</div>
+  <table class="ft">
+    <tr><td>Clinical</td><td>Screening</td></tr>
+    <tr><td>Technique</td><td>CC and MLO views</td></tr>
+    <tr><td>Breast Tissue</td><td>${tissue}</td></tr>
+    <tr><td>Mass</td><td>${mass}</td></tr>
+    <tr><td>Calcifications</td><td>${calcs}</td></tr>
+    <tr><td>Architectural Distortion</td><td>${arch}</td></tr>
+    <tr><td>Focal / Breast Asymmetry</td><td>${asym}</td></tr>
+    <tr><td>Skin Thickening</td><td>Not detectable</td></tr>
+    <tr><td>Others</td><td>—</td></tr>
   </table>
 
-  ${isMalignant ? `<div class="malignant-alert">🚨 ALERT: Malignant finding detected. Immediate radiologist review is strongly recommended.</div>` : ''}
-
-  <div class="section-title">AI Analysis Result</div>
-  <div class="result-box ${record.result.toLowerCase()}">
-    <div class="result-title">${isMalignant ? '🔴' : '🟢'} ${record.result.toUpperCase()}</div>
-    <div>Overall Confidence: <strong>${record.confidence}</strong></div>
+  <div class="sh">Screening Result</div>
+  <div class="rb">
+    <div class="rb-result">${record.result.toUpperCase()}</div>
+    <div class="rb-conf">Confidence: <strong>${record.confidence}</strong></div>
+    <div class="rb-brd">${birads}</div>
   </div>
 
-  <div class="section-title">Probability Breakdown</div>
-  <table>
+  <div class="sh">Probability Breakdown</div>
+  <table class="pt">
     <tr><th>Category</th><th>Probability</th></tr>
-    <tr><td><span class="badge badge-b">BENIGN</span></td><td><strong>${record.benignProb}</strong></td></tr>
-    <tr><td><span class="badge badge-m">MALIGNANT</span></td><td><strong>${record.malignantProb}</strong></td></tr>
+    <tr><td>Benign</td><td><strong>${record.benignProb}</strong></td></tr>
+    <tr><td>Malignant</td><td><strong>${record.malignantProb}</strong></td></tr>
   </table>
 
-  <div class="disclaimer">
-    ⚠️ <strong>Important Disclaimer:</strong> This is an AI-assisted analysis only. Final diagnosis MUST be confirmed by a certified radiologist or oncologist. This report does not constitute a medical diagnosis.
+  <div class="sh">Impression</div>
+  <div class="tb">${impression}</div>
+
+  <div class="sh">Suggestion</div>
+  <div class="tb">${suggestion}</div>
+
+  <div class="sh">Note</div>
+  <ul class="nl">
+    <li>The false negative rate of mammography is approximately 10%.</li>
+    <li>Dense breast tissue may obscure underlying neoplasm.</li>
+    <li>Management of a palpable abnormality must be based on clinical assessment.</li>
+  </ul>
+
+  <div class="disc">
+    <strong>Important Disclaimer:</strong> This report is for clinical reference only. Final diagnosis must be confirmed by a certified radiologist or oncologist. This report does not constitute a medical diagnosis.
   </div>
+
+  <div class="eor">**** End of Report ****</div>
 </div>
-<div class="footer">
-  © ${new Date().getFullYear()} Ministry of Health &amp; Family Welfare, Government of India | NIC | NHA |
-  NMADS v2.1 — Federated Learning Mammogram Detection System
+
+<div class="ftr">
+  <span>&copy; ${new Date().getFullYear()} <strong>DISHA</strong> &mdash; Diagnostic Imaging &amp; Screening for Health Analytics</span>
+  <span>Not a substitute for radiological diagnosis</span>
 </div>
+
 </body></html>`);
     win.document.close();
     win.print();

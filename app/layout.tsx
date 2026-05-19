@@ -3,10 +3,10 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "National Mammogram AI Detection System | MoHFW, Government of India",
+  title: "DISHA — Diagnostic Imaging & Screening for Health Analytics",
   description:
-    "Federated Learning based Mammogram Cancer Detection System — Ministry of Health & Family Welfare, Government of India",
-  keywords: "mammogram, AI, cancer detection, federated learning, AIIMS, NHA, NIC",
+    "DISHA: AI-powered breast cancer screening platform using Federated Learning. Privacy-first, multi-hospital, ResNet101 deep learning.",
+  keywords: "DISHA, mammogram, AI, breast cancer detection, federated learning, radiology, screening",
 };
 
 export default function RootLayout({
@@ -19,17 +19,20 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1a3a6b" />
+        <meta name="theme-color" content="#0f2744" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              border: "1px solid #2c5f9e",
-              borderRadius: "2px",
+              border: "1px solid #e2e8f0",
+              borderRadius: "10px",
               fontSize: "13px",
-              fontFamily: "Arial, sans-serif",
+              fontFamily: "'Inter', sans-serif",
+              boxShadow: "0 4px 16px rgba(15,39,68,0.12)",
             },
           }}
         />

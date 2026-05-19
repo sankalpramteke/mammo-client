@@ -1,277 +1,277 @@
-# mammo-client — Complete In-Depth Guide
+# DISHA — mammo-client
 
-> **Purpose**: Front-end web application for healthcare professionals to upload mammogram images, get AI predictions, confirm diagnoses for Federated Learning, and view scan history/reports.
-
----
-
-## 1. Technology Stack
-
-| Technology | Version | Why We Used It |
-|---|---|---|
-| **Next.js** | 14.2 | Full-stack React framework — gives us both the **front-end UI** (React pages) and **back-end API routes** (`/api/*`) in one project. No need for a separate Express server. Uses **App Router** (new `app/` directory). |
-| **React** | 18 | Component-based UI library. Allows reusable components like `GovHeader`, `Banner`, `AshokaChakra`. |
-| **TypeScript** | 5 | Type safety — catches bugs at compile time. Every file uses `.ts`/`.tsx` instead of plain `.js`. |
-| **MongoDB Atlas** | Cloud | NoSQL cloud database. Stores doctors and predictions. Chosen because it's schema-flexible and free tier is sufficient. |
-| **Mongoose** | 9.3 | ODM (Object Document Mapper) for MongoDB — lets us define schemas (`Doctor`, `Prediction`) with TypeScript interfaces and validation. |
-| **TailwindCSS** | 3.4 | Utility-first CSS framework — rapid styling with classes like `bg-blue-500`, `text-white`, `rounded-lg`. No separate CSS files needed. |
-| **bcryptjs** | 3.0 | Password hashing. When a doctor registers, password is hashed with 10 salt rounds before storing in DB. Never stored in plain text. |
-| **jsonwebtoken (JWT)** | 9.0 | Stateless authentication. After login, server signs a JWT with `doctorId`, `email`, `name`. Client stores it in `localStorage` and sends it with every API request as `Bearer <token>`. |
-| **axios** | 1.13 | HTTP client — used for API calls from the front-end (nicer API than native `fetch`, with interceptors, timeouts, error typing). |
-| **react-dropzone** | 15.0 | Drag-and-drop file upload component for the mammogram image. Handles file validation (accepts only images). |
-| **chart.js + react-chartjs-2** | 4.5 / 5.3 | Used in the dashboard for rendering charts (accuracy progression, prediction distribution). |
-| **react-hot-toast** | 2.6 | Toast notifications — success/error messages that appear in the corner (e.g., "Prediction complete!", "Login failed"). |
+> **Doctor-Facing Diagnostic Portal**
+>
+> mammo-client is the web application used by radiologists and doctors at each hospital. Doctors upload mammogram images, receive an AI-powered risk assessment in under 2 seconds, view diagnostic reports, and track their scan history — all from a clean, professional clinical interface.
 
 ---
 
-## 2. Project Architecture
+## What Does This Do?
 
-```mermaid
-graph TB
-    subgraph "mammo-client (Next.js :3000)"
-        direction TB
-        UI["Pages (React)"]
-        API["API Routes (Server-side)"]
-        LIB["Lib Utilities"]
-        MODELS["Mongoose Models"]
-    end
-    
-    UI -->|"HTTP (axios)"| API
-    API -->|"Mongoose"| DB["MongoDB Atlas"]
-    API -->|"fetch"| FS["mammo-server :8000"]
-    API -->|"fetch"| FG["mammo-global :3001"]
-    LIB --> UI
-    MODELS --> API
-```
+mammo-client is the **front door of the DISHA system for doctors**. It handles everything a clinician needs day-to-day:
 
-### Key Architectural Decisions
+- **Upload** a mammogram image
+- **Get an instant AI prediction** — Benign or Malignant, with confidence percentage
+- **View a heatmap** showing exactly which region of the mammogram the AI focused on
+- **Generate a clinical report** with patient ID, findings, and recommendations
+- **Review scan history** across all previous cases
+- **Monitor** the local AI model's training status and accuracy
 
-1. **Next.js API Routes as BFF (Backend-for-Frontend)**: The client NEVER talks directly to `mammo-server`. Instead, the React page calls `/api/predict` (our own Next.js route), which then forwards to FastAPI. This is the **BFF pattern** — it adds a security layer (JWT verification happens here).
-
-2. **Client-side session storage**: JWT token is stored in `localStorage` (not cookies). Simple but effective for a single-domain app.
-
-3. **Singleton MongoDB connection**: `lib/mongoose.ts` caches the connection on `globalThis` to survive Next.js hot-reloads. Without this, you'd get "too many connections" errors during development.
+It connects directly to the local `mammo-server` for predictions and training, and links through `mammo-global` for the hospital's FL participation.
 
 ---
 
-## 3. Core Features of mammo-client
-
-Here is an explanation of every major feature implemented in the mammo-client frontend:
-
-### 1. Doctor Authentication & Registration
-- **What it is**: Secure login and registration system for healthcare professionals.
-- **How it works**: Uses JWT (JSON Web Tokens) for session management and bcrypt for password hashing. When a new doctor registers, they must provide their Hospital Name, which automatically registers that hospital with the `mammo-global` dashboard.
-- **Why it matters**: Ensures only authorized personnel can upload sensitive medical images, and links every prediction to a specific doctor and hospital for accountability.
-
-### 2. Mammogram AI Analysis (Scan Page)
-- **What it is**: The core interface where doctors drag-and-drop mammogram images (JPEG/PNG/DCM) for AI evaluation.
-- **How it works**: The React Dropzone handles the file upload. When the user clicks "Analyze", the image is sent securely via the Next.js API route to the `mammo-server` (FastAPI). The result (Benign or Malignant with confidence percentages) is returned and displayed with color-coded alerts (Red for Malignant, Green for Benign).
-- **Why it matters**: Provides an instant, second-opinion AI screening tool to assist radiologists in detecting breast cancer early.
-
-### 3. Federated Learning (FL) Diagnosis Confirmation
-- **What it is**: A feedback loop mechanism for the AI model. 
-- **How it works**: After receiving the AI's prediction, the doctor is presented with a blue panel asking to "Confirm True Diagnosis". The doctor selects either Benign or Malignant based on their expert finding. This confirmed label is saved to MongoDB and queued on `mammo-server` for the next Federated Learning training round.
-- **Why it matters**: This is the heart of the project. It allows the AI model to continuously learn from expert corrections *without* the patient images ever leaving the local hospital (only the model weights are shared globally).
-
-### 4. Cancer Warriors Tribute (Landing Page)
-- **What it is**: A dedicated section on the public landing page honoring prominent Indian oncologists (Dr. V. Shanta, Dr. Advani, Dr. Badwe, Dr. Raghu Ram).
-- **How it works**: Interactive cards display their portraits, contributions, and awards.
-- **Why it matters**: Adds a human element and localized context to the project, recognizing the pioneers of cancer treatment in India.
-
-### 5. Scan History & Reports
-- **What it is**: Dashboards where doctors can view their past AI analyses.
-- **How it works**: Fetches historical data from MongoDB (using the doctor's JWT to filter only their scans).
-- **Why it matters**: Allows doctors to track patient progression over time and refer back to previous AI predictions.
-
----
-
-## 4. Folder Structure Explained
+## System Flow
 
 ```
-mammo-client/
-├── app/                          # Next.js App Router (pages + API routes)
-│   ├── page.tsx                  # Landing page (Cancer Warriors, Hero)
-│   ├── layout.tsx                # Root layout (html, body, Toaster)
-│   ├── globals.css               # Global styles + Tailwind imports
-│   ├── login/page.tsx            # Login + Registration page
-│   ├── scan/page.tsx             # ★ Core page — upload mammogram, get AI result
-│   ├── dashboard/page.tsx        # Doctor's personal dashboard
-│   ├── history/page.tsx          # Past scan history table
-│   ├── reports/page.tsx          # Reports & analytics
-│   ├── help/page.tsx             # Help & documentation
-│   └── api/                      # Server-side API routes (run on Node.js)
-│       ├── auth/login/route.ts   # POST: authenticate doctor, return JWT
-│       ├── auth/register/route.ts# POST: create doctor, hash password, notify global
-│       ├── predict/route.ts      # POST: verify JWT → forward image to FastAPI → save result to MongoDB
-│       ├── confirm-scan/route.ts # POST: save confirmed diagnosis → send to mammo-server for FL
-│       └── history/route.ts      # GET: fetch past predictions for logged-in doctor
-├── components/                   # Reusable UI components
-│   ├── AshokaChakra.tsx          # Animated spinning Ashoka Chakra SVG
-│   ├── Banner.tsx                # Auto-dismissing cancer warriors banner (4s)
-│   ├── GovHeader.tsx             # Government-style header with login/logout
-│   ├── GovNavbar.tsx             # Navigation bar (Dashboard, New Scan, History, etc.)
-│   ├── GovFooter.tsx             # Government-style footer
-│   ├── GovLayout.tsx             # Wrapper layout (Header + Navbar + Footer)
-│   └── NewsTicker.tsx            # Scrolling news ticker below navbar
-├── models/                       # Mongoose schemas
-│   ├── Doctor.ts                 # { name, email, password, hospitalName }
-│   └── Prediction.ts            # { doctorId, patientCode, prediction, confidence, ... }
-├── lib/                          # Shared utilities
-│   ├── mongoose.ts               # Singleton MongoDB connection
-│   ├── auth.ts                   # Client-side session (get/set/clear in localStorage)
-│   ├── verifyToken.ts            # Server-side JWT verification
-│   ├── api.ts                    # Axios instance + helper functions
-│   └── storage.ts                # Additional storage utilities
-├── public/warriors/              # Cancer warrior portrait images
-└── .env.local                    # Secrets (MONGODB_URI, JWT_SECRET)
+Doctor opens mammo-client
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│         Landing Page / Login            │
+│  • Login with email + password          │
+│  • Register with hospital name          │
+│  • Hospital auto-registered in          │
+│    mammo-global on first signup         │
+└───────────────────┬─────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────┐
+│           Doctor Dashboard              │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │  Upload Mammogram               │   │
+│  │  • Drag & drop or browse        │   │
+│  │  • Supports JPG, PNG, DICOM     │   │
+│  └──────────────┬──────────────────┘   │
+│                 │                       │
+│                 ▼                       │
+│  ┌─────────────────────────────────┐   │
+│  │  AI Prediction (mammo-server)   │   │
+│  │  • Benign / Malignant result    │   │
+│  │  • Confidence percentage        │   │
+│  │  • Radial gauge visualization   │   │
+│  │  • Risk badge (Low/High)        │   │
+│  └──────────────┬──────────────────┘   │
+│                 │                       │
+│                 ▼                       │
+│  ┌─────────────────────────────────┐   │
+│  │  Diagnostic Heatmap             │   │
+│  │  • Grad-CAM overlay             │   │
+│  │  • Shows AI's region of focus   │   │
+│  └─────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+         │                    │
+         ▼                    ▼
+   Scan History          Clinical Report
+   (all past cases)      (PDF-ready)
 ```
 
 ---
 
-## 4. API Routes — Deep Dive
+## Technology Stack
 
-### `POST /api/auth/register`
-```
-Input:  { name, email, password, hospitalName }
-Steps:  1. Validate all fields present
-        2. Check if email already exists → 409 if duplicate
-        3. Hash password with bcrypt (10 rounds)
-        4. Create Doctor in MongoDB
-        5. Notify mammo-global about the new hospital
-        6. Sign JWT (7-day expiry) with { doctorId, email, name, hospitalName }
-Output: { token, doctorId, name, email, hospitalName }
-```
-
-### `POST /api/auth/login`
-```
-Input:  { email, password }
-Steps:  1. Find doctor by email
-        2. Compare password with bcrypt hash
-        3. Sign JWT on success
-Output: { token, doctorId, name, email, hospitalName }
-```
-
-### `POST /api/predict` ★ (Most Important Route)
-```
-Input:  FormData { file: image, patient_code: string }
-Auth:   Bearer JWT (verified via verifyToken.ts)
-Steps:  1. Verify JWT → reject 401 if invalid
-        2. Forward the image FormData to mammo-server (localhost:8000/predict)
-        3. Receive AI prediction { prediction, confidence, benign_prob, malignant_prob }
-        4. Save Prediction document to MongoDB (linked to doctorId)
-        5. Return result to the React page
-Output: { prediction, confidence, benign_prob, malignant_prob, patientCode }
-```
-
-### `POST /api/confirm-scan` (FL Pipeline)
-```
-Input:  { patientId, aiPrediction, confirmedLabel, confidence }
-Steps:  1. Create ConfirmedScan document in MongoDB
-        2. Forward { patientId, confirmedLabel } to mammo-server/queue-for-training
-        3. If mammo-server is offline, scan is saved locally for later
-Output: { success: true, scanId, message }
-```
-
-### `GET /api/history`
-```
-Auth:   Bearer JWT
-Steps:  1. Verify JWT → extract doctorId
-        2. Find all Predictions where doctorId matches, sorted by date
-Output: Array of prediction records
-```
+| Technology | Purpose |
+|---|---|
+| **Next.js 14** (App Router) | Full-stack React framework |
+| **React 18** | Component-based clinical UI |
+| **MongoDB Atlas** | Stores doctors, scan history, and predictions |
+| **Mongoose** | Database schema definitions |
+| **bcryptjs** | Secure password hashing for doctor accounts |
+| **jsonwebtoken** | Session authentication |
+| **axios** | API requests to mammo-server and mammo-global |
+| **react-dropzone** | Drag-and-drop image upload interface |
+| **react-hot-toast** | Clinical-grade alert notifications |
 
 ---
 
-## 5. Authentication Flow
+## Features
 
-```mermaid
-sequenceDiagram
-    participant D as Doctor (Browser)
-    participant C as mammo-client API
-    participant DB as MongoDB
+### 1. Doctor Authentication
+- **Register** with full name, email, password, and hospital name
+- **Login** using email and password
+- On first registration, the hospital is automatically registered in `mammo-global` as a participating FL node
+- Passwords stored with bcrypt (cost factor 10)
+- Session stored securely in browser (JWT)
 
-    D->>C: POST /api/auth/register { name, email, password, hospitalName }
-    C->>C: bcrypt.hash(password, 10)
-    C->>DB: Doctor.create({ name, email, hashedPassword, hospitalName })
-    C->>C: jwt.sign({ doctorId, email, name }, JWT_SECRET, 7d)
-    C->>D: { token, doctorId, name, hospitalName }
-    D->>D: localStorage.setItem("mammo_session", JSON.stringify({...}))
+### 2. Mammogram Upload & AI Prediction
+- Drag-and-drop or browse to upload a mammogram image (JPG/PNG)
+- Image is sent to the local `mammo-server` for inference
+- Result returned in under 2 seconds:
+  - **Prediction:** Benign or Malignant
+  - **Confidence:** Percentage certainty
+  - **Benign probability** and **Malignant probability** as separate values
+- Auto-generates a unique **Patient Record ID** for each scan
 
-    Note over D: On every API call after login:
-    D->>C: POST /api/predict (Header: Authorization: Bearer <token>)
-    C->>C: verifyToken(header) → { doctorId, email, name }
-    C-->>D: 401 if invalid token
-```
+### 3. Radial Gauge & Risk Badge
+- Visual radial gauge displays the confidence score in an intuitive arc
+- **Risk Badge** colour-codes the result:
+  - Green — Benign (Low Risk)
+  - Red — Malignant (High Risk)
+- Makes the result immediately readable without reading numbers
 
-**Why JWT?**
-- **Stateless**: No server-side session store needed. The token itself carries the user identity.
-- **Expiry**: 7-day expiry means the doctor doesn't have to login every time.
-- **Security**: Secret key (`JWT_SECRET`) is only on the server. Token can't be forged.
+### 4. Diagnostic Heatmap (Grad-CAM)
+- After prediction, a heatmap overlay is generated via `mammo-server`
+- Uses **Grad-CAM** (Gradient-weighted Class Activation Mapping) to highlight the exact region of the mammogram the AI used to make its decision
+- Gives doctors visual explainability — they can see *why* the AI made its call
+- Displayed as a semi-transparent colour overlay on the original image
 
-**Why bcrypt?**
-- Passwords are **never stored in plain text**
-- `bcrypt.hash(password, 10)` = 10 salt rounds = computationally expensive to brute-force
-- `bcrypt.compare()` handles the comparison without ever decrypting
+### 5. Clinical Report Generation
+- Generates a structured single-page clinical report including:
+  - Hospital name and doctor details
+  - Patient Record ID (auto-generated)
+  - Date and time of scan
+  - AI findings: prediction, confidence, risk level
+  - Standardised clinical recommendation text
+  - Privacy statement (data never stored externally)
+- Report is print-ready and PDF-exportable
+
+### 6. Scan History
+- All scans are automatically saved after confirmation
+- History page shows a searchable, sortable table of all past cases
+- Each record includes patient ID, result, confidence, image name, and date
+- Doctors can review past cases and track patient outcomes
+
+### 7. FL Training Status Monitor
+- Dashboard shows the live status of the local `mammo-server`
+- Displays current model accuracy, total training rounds, and validation metrics
+- Indicates whether the AI backend is **Online** or **Offline**
+- Keeps doctors informed about the quality of their local AI model
 
 ---
 
-## 6. Mongoose Models
+## API Endpoints
 
-### Doctor Schema
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | None | Create a new doctor account |
+| `POST` | `/api/auth/login` | None | Login and receive JWT |
+| `POST` | `/api/predict` | JWT | Send image to mammo-server, get prediction |
+| `POST` | `/api/predict-heatmap` | JWT | Generate Grad-CAM heatmap for an image |
+| `POST` | `/api/confirm-scan` | JWT | Save a completed scan to history |
+| `GET` | `/api/history` | JWT | Retrieve all past scans for the logged-in doctor |
+
+---
+
+## Pages
+
+| Route | Description |
+|---|---|
+| `/` | Landing page with login and registration |
+| `/dashboard` | Main clinical workspace — upload, predict, view result |
+| `/history` | Full scan history table |
+| `/reports` | Clinical report generation and print view |
+| `/scan` | Dedicated scan submission page |
+| `/help` | User guide and platform documentation |
+
+---
+
+## Database Models
+
+### Doctor
 ```typescript
 {
-  name:         String,    // "Dr. Vedant Wahane"
-  email:        String,    // unique, lowercase, indexed
-  password:     String,    // bcrypt hash (never plain text!)
-  hospitalName: String,    // "GMCH Nagpur"
-  createdAt:    Date,      // auto (timestamps: true)
-  updatedAt:    Date       // auto
+  name:         string,   // "Dr. Sankalp Ramteke"
+  email:        string,   // "sankalp@aiims.ac.in"
+  password:     string,   // bcrypt hash
+  hospitalName: string,   // "AIIMS Nagpur"
+  createdAt:    Date
 }
 ```
 
-### Prediction Schema
+### Scan History Record
 ```typescript
 {
-  doctorId:      ObjectId,  // references Doctor._id
-  patientCode:   String,    // "PT-87314"
-  prediction:    String,    // "Benign" or "Malignant"
-  confidence:    String,    // "52.3%"
-  benignProb:    String,    // "52.3%"
-  malignantProb: String,    // "47.7%"
-  modelVersion:  String,    // "ResNet50-FL-v2"
-  imageName:     String,    // "test4.png"
-  createdAt:     Date
+  doctorId:       string,   // links to Doctor
+  patientId:      string,   // auto-generated "PAT-XXXX"
+  imageName:      string,   // original filename
+  result:         string,   // "Benign" | "Malignant"
+  confidence:     string,   // "94.7%"
+  benignProb:     string,   // "5.3%"
+  malignantProb:  string,   // "94.7%"
+  date:           Date
 }
 ```
 
-> **Important**: The actual mammogram image is NOT stored in MongoDB. Only the prediction metadata is stored. The image is sent to FastAPI for inference and discarded — this is by design for **patient privacy**.
-
 ---
 
-## 7. Environment Variables
+## Setup & Running
 
-| Variable | Value | Why |
+### Prerequisites
+- Node.js 18+
+- MongoDB Atlas account
+- `mammo-server` running locally on port 8000 (for predictions)
+- `mammo-global` running on port 3001 (for FL coordination)
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your values
+
+# Start development server
+npm run dev   # Runs on http://localhost:3000
+```
+
+### Environment Variables
+
+| Variable | Required | Description |
 |---|---|---|
-| `MONGODB_URI` | `mongodb+srv://...` | Connection string to MongoDB Atlas cloud database |
-| `JWT_SECRET` | `mammo_jwt_secret_nmads_2026` | Secret key for signing/verifying JWT tokens. Must be kept private. |
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string for mammo-client database |
+| `JWT_SECRET` | Yes | Secret key for signing doctor session tokens |
+| `MAMMO_SERVER_URL` | No | Local AI server URL (default: `http://localhost:8000`) |
+| `NEXT_PUBLIC_GLOBAL_URL` | No | mammo-global URL for FL status display |
 
 ---
 
-## 8. Key Concepts You Should Know
+## How It Connects to the Wider DISHA System
 
-### Q: Why does mammo-client have API routes? Isn't it a front-end?
-**A**: Next.js is a full-stack framework. The `app/api/` directory creates **server-side Node.js endpoints**. This acts as a **BFF (Backend-for-Frontend)** — the React pages never talk to mammo-server directly. This adds security (JWT verification), data persistence (MongoDB), and decoupling.
+```
+mammo-client (doctor portal)
+       │
+       ├── POST /api/predict ──────────────→ mammo-server :8000
+       │                                     (local AI inference)
+       │
+       ├── POST /api/predict-heatmap ──────→ mammo-server :8000
+       │                                     (Grad-CAM generation)
+       │
+       └── Auto-register hospital ─────────→ mammo-global :3001
+           on doctor signup                  (FL network enrollment)
+```
 
-### Q: Why not call mammo-server directly from the browser?
-**A**: Three reasons: (1) **Security** — JWT verification happens server-side, (2) **CORS** — browser same-origin policy would block cross-port requests, (3) **Data layer** — we save predictions to our own MongoDB before returning results.
+When a doctor **registers**, their hospital name is sent to `mammo-global`, enrolling it as a participating Federated Learning node. This means the hospital will appear on the global admin dashboard and can contribute to improving the shared AI model — without ever sharing patient data.
 
-### Q: How does the FL confirmation work?
-**A**: After AI predicts, the doctor sees a panel to confirm the true diagnosis. On submit, `confirm-scan` route saves it to MongoDB AND forwards it to `mammo-server/queue-for-training`. The queue accumulates confirmed labels. When `/train` is triggered, the model fine-tunes on these labels and sends weights to mammo-global.
+---
 
-### Q: What happens if mammo-server is offline?
-**A**: The `predict` route returns a 503 error with a friendly message. The `confirm-scan` route catches the fetch error and still saves the confirmation locally — it can be synced later.
+## Privacy & Compliance
 
-### Q: Why localStorage for session instead of cookies?
-**A**: Simpler implementation for a single-domain app. In production, HTTP-only cookies would be more secure against XSS attacks, but for this project, localStorage is sufficient and easier to debug.
+| What | How |
+|---|---|
+| **Patient images** | Processed entirely on the hospital's local `mammo-server`. Never sent to any cloud or external server. |
+| **Scan results** | Stored only in the hospital's own MongoDB database. |
+| **FL participation** | Only mathematical weight updates (not images) are sent to `mammo-global`. |
+| **Doctor passwords** | Stored as bcrypt hashes. Never readable, even by administrators. |
+| **Patient IDs** | Auto-generated codes (`PAT-XXXX`). No real names stored in scan records. |
 
-### Q: What is the Singleton pattern in mongoose.ts?
-**A**: Next.js recreates modules on hot-reload during development. Without caching, every API call would open a new MongoDB connection, hitting the 100-connection limit. The singleton caches the connection on `globalThis` to reuse across hot-reloads.
+---
+
+## Frequently Asked Questions
+
+**Q: Does the AI send mammogram images anywhere outside the hospital?**
+> No. The image goes from the doctor's browser to `mammo-server`, which runs on the hospital's own machine. The result (a prediction number) comes back. The image itself never leaves the hospital network.
+
+**Q: What is the AI model's accuracy?**
+> The ResNet50 model was validated on the CBIS-DDSM dataset with **92.1% accuracy** on 10,556 mammogram images. Accuracy continues to improve with each Federated Learning round as more hospitals contribute.
+
+**Q: What does the heatmap actually show?**
+> It shows which pixels of the mammogram most strongly influenced the AI's prediction, using a technique called Grad-CAM. Warm colours (red/yellow) indicate high influence. This helps doctors understand the AI's reasoning and identify the region of concern.
+
+**Q: What happens if mammo-server is offline?**
+> The dashboard shows "Backend Offline" status. Predictions cannot be made until the local server is restarted. Scan history and reports remain fully accessible.
+
+**Q: Can two doctors from the same hospital share scan history?**
+> Currently, scan history is per-doctor (linked by `doctorId`). Each doctor sees only their own cases. Multi-doctor shared records can be enabled by updating the history query to filter by `hospitalName` instead.

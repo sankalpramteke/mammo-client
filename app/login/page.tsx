@@ -1,7 +1,6 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AshokaChakra from '@/components/AshokaChakra';
 import { setSession } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import axios from 'axios';
@@ -14,24 +13,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Shared fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [hospitalName, setHospitalName] = useState('');
-
-  // Register-only fields
   const [name, setName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!hospitalName.trim()) e.hospitalName = 'Hospital Name is required';
+    if (!hospitalName.trim()) e.hospitalName = 'Hospital name is required';
     if (!email.trim()) e.email = 'Email address is required';
-    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Enter a valid email address';
+    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Enter a valid email';
     if (!password.trim()) e.password = 'Password is required';
     if (mode === 'register') {
       if (!name.trim()) e.name = 'Full name is required';
-      if (password.length < 6) e.password = 'Password must be at least 6 characters';
+      if (password.length < 6) e.password = 'Minimum 6 characters';
       if (confirmPassword !== password) e.confirmPassword = 'Passwords do not match';
     }
     setErrors(e);
@@ -42,242 +38,171 @@ export default function LoginPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const body = mode === 'login'
         ? { email, password }
         : { name, email, password, hospitalName };
-
       const res = await axios.post(endpoint, body);
       const data = res.data;
-
-      // Persist session
-      setSession({
-        token: data.token,
-        doctorId: data.doctorId,
-        name: data.name,
-        email: data.email,
-        hospitalName: data.hospitalName,
-      });
-
-      toast.success(mode === 'login' ? `Welcome back, Dr. ${data.name}!` : `Account created! Welcome, Dr. ${data.name}`);
+      setSession({ token: data.token, doctorId: data.doctorId, name: data.name, email: data.email, hospitalName: data.hospitalName });
+      toast.success(mode === 'login' ? `Welcome back, Dr. ${data.name}!` : `Welcome, Dr. ${data.name}`);
       router.push('/dashboard');
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const msg = err.response?.data?.error || (mode === 'login' ? 'Login failed.' : 'Registration failed.');
-        toast.error(msg);
-      } else {
-        toast.error('Network error. Please try again.');
-      }
+      if (axios.isAxiosError(err)) toast.error(err.response?.data?.error || 'Authentication failed.');
+      else toast.error('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const switchMode = (newMode: Mode) => {
-    setMode(newMode);
-    setErrors({});
-  };
-
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: 'linear-gradient(160deg, #0d2347 0%, #1a3a6b 40%, #2c5f9e 100%)' }}
-    >
-      {/* Top bar */}
-      <div style={{ background: '#122a52', borderBottom: '3px solid #f7941d' }}>
-        <div className="max-w-screen-xl mx-auto px-4 py-2 flex items-center gap-2">
-          <AshokaChakra size={28} />
-          <span className="text-white text-xs font-semibold tracking-wide">
-            Ministry of Health &amp; Family Welfare | Government of India
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      background: 'linear-gradient(135deg, #0a1628 0%, #0f2744 40%, #1a3a6b 75%, #1e4d8c 100%)',
+      fontFamily: 'Inter, -apple-system, sans-serif',
+    }}>
+
+      {/* LEFT: Branding panel */}
+      <div style={{
+        flex: '0 0 45%',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '60px 56px',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        {/* DISHA Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 48 }}>
+          <svg width="52" height="52" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="22" stroke="#f59e0b" strokeWidth="1.5" strokeOpacity="0.5" />
+            <circle cx="24" cy="24" r="17" stroke="#f59e0b" strokeWidth="2" fill="rgba(245,158,11,0.1)" />
+            <path d="M 24 7 A 17 17 0 0 1 41 24" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+            <line x1="24" y1="2" x2="24" y2="6" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="46" y1="24" x2="42" y2="24" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="24" y1="46" x2="24" y2="42" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="2" y1="24" x2="6" y2="24" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
+            <text x="24" y="29" textAnchor="middle" fill="#f59e0b" fontSize="14" fontWeight="800" fontFamily="Inter,sans-serif">D</text>
+          </svg>
+          <div>
+            <div style={{ color: 'white', fontWeight: 800, fontSize: 22, letterSpacing: '-0.5px' }}>DISHA</div>
+            <div style={{ color: 'rgba(245,158,11,0.7)', fontSize: 10, letterSpacing: '0.5px', marginTop: 2 }}>DIAGNOSTIC IMAGING &amp; SCREENING FOR HEALTH ANALYTICS</div>
+          </div>
+        </div>
+
+        {/* Headline */}
+        <h2 style={{ fontSize: 32, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 16, letterSpacing: '-0.03em' }}>
+          Intelligent<br />Cancer Screening<br />
+          <span style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            Built for Doctors
           </span>
-        </div>
-      </div>
+        </h2>
 
-      {/* Main */}
-      <div className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <div
-                className="p-4 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.08)', border: '2px solid rgba(247,148,29,0.4)' }}
-              >
-                <AshokaChakra size={72} />
-              </div>
-            </div>
-            <h1 className="text-white text-xl font-bold tracking-wide mb-1">
-              National Mammogram AI Detection System
-            </h1>
-            <p className="text-orange-300 text-sm">Federated Learning Based Cancer Detection Portal</p>
-            <p className="text-blue-300 text-xs mt-1">Ministry of Health &amp; Family Welfare, Government of India</p>
-          </div>
-
-          {/* Card */}
-          <div
-            className="p-6"
-            style={{
-              background: 'white',
-              border: '1px solid #c8d0dc',
-              borderTop: '3px solid #f7941d',
-              borderRadius: '2px',
-            }}
-          >
-            {/* Mode tabs */}
-            <div className="flex mb-5 border-b border-gray-200">
-              {(['login', 'register'] as Mode[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => switchMode(m)}
-                  className="flex-1 py-2 text-xs font-bold transition-colors"
-                  style={{
-                    color: mode === m ? '#1a3a6b' : '#999',
-                    borderBottom: mode === m ? '2px solid #f7941d' : '2px solid transparent',
-                    background: 'none',
-                  }}
-                >
-                  {m === 'login' ? 'LOGIN' : 'NEW REGISTRATION'}
-                </button>
-              ))}
-            </div>
-
-            <div className="mb-4 pb-3" style={{ borderBottom: '1px solid #e0e6ef' }}>
-              <h2 className="text-sm font-bold" style={{ color: '#1a3a6b' }}>
-                {mode === 'login' ? 'Authorised Healthcare Professional Login' : 'Register as Healthcare Professional'}
-              </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {mode === 'login' ? 'Access restricted to registered medical practitioners only' : 'Create your institutional account'}
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} noValidate>
-              {/* Name — register only */}
-              {mode === 'register' && (
-                <div className="mb-3">
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#333' }}>
-                    Full Name <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="gov-input"
-                    placeholder="e.g. Dr. Anjali Mehta"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={{ borderColor: errors.name ? '#dc3545' : undefined }}
-                  />
-                  {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
-                </div>
-              )}
-
-              {/* Hospital name */}
-              <div className="mb-3">
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#333' }}>
-                  Hospital / Institution Name <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="gov-input"
-                  placeholder="e.g. AIIMS Mumbai"
-                  value={hospitalName}
-                  onChange={(e) => setHospitalName(e.target.value)}
-                  style={{ borderColor: errors.hospitalName ? '#dc3545' : undefined }}
-                />
-                {errors.hospitalName && <p className="text-red-600 text-xs mt-1">{errors.hospitalName}</p>}
-              </div>
-
-              {/* Email */}
-              <div className="mb-3">
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#333' }}>
-                  Official Email Address <span className="text-red-600">*</span>
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  className="gov-input"
-                  placeholder="e.g. doctor@aiims.in"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{ borderColor: errors.email ? '#dc3545' : undefined }}
-                />
-                {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
-              </div>
-
-              {/* Password */}
-              <div className="mb-3">
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#333' }}>
-                  Password <span className="text-red-600">*</span>
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  className="gov-input"
-                  placeholder={mode === 'register' ? 'Minimum 6 characters' : 'Enter password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ borderColor: errors.password ? '#dc3545' : undefined }}
-                />
-                {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password}</p>}
-              </div>
-
-              {/* Confirm password — register only */}
-              {mode === 'register' && (
-                <div className="mb-3">
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#333' }}>
-                    Confirm Password <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    className="gov-input"
-                    placeholder="Re-enter password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{ borderColor: errors.confirmPassword ? '#dc3545' : undefined }}
-                  />
-                  {errors.confirmPassword && <p className="text-red-600 text-xs mt-1">{errors.confirmPassword}</p>}
-                </div>
-              )}
-
-              <div className="mt-5">
-                <button
-                  id="loginBtn"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2.5 font-bold text-sm text-white transition-colors disabled:opacity-70"
-                  style={{
-                    background: loading ? '#4a7fc1' : '#1a3a6b',
-                    border: '1px solid #122a52',
-                    borderRadius: '2px',
-                    letterSpacing: '0.3px',
-                  }}
-                >
-                  {loading
-                    ? 'Please wait...'
-                    : mode === 'login' ? 'LOGIN TO PORTAL' : 'CREATE ACCOUNT'}
-                </button>
-              </div>
-            </form>
-
-            <div
-              className="mt-4 p-2.5 text-xs"
-              style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '2px', color: '#856404' }}
-            >
-              ⚠️ This system is for authorised medical personnel only. Unauthorised access is prohibited under IT Act 2000.
-            </div>
-          </div>
-
-          <p className="text-blue-300 text-xs text-center mt-4">
-            For technical support, contact NIC Helpdesk: 1800-111-0888
-          </p>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div style={{ background: '#0d2347', borderTop: '2px solid #f7941d' }} className="py-2 text-center">
-        <p className="text-blue-400 text-xs">
-          © 2026 Ministry of Health &amp; Family Welfare, Government of India | NIC | Website Policy | Help
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 1.7, marginBottom: 40, maxWidth: 340 }}>
+          Securely analyze mammograms with AI trained across multiple hospitals using Federated Learning — where patient data never leaves your institution.
         </p>
+
+        {/* Stats */}
+        {[
+          { num: '92.1%', label: 'Model Accuracy' },
+          { num: '10,556', label: 'Training Samples' },
+          { num: '<2s', label: 'Inference Time' },
+        ].map(s => (
+          <div key={s.num} style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+            <div style={{ width: 3, height: 28, background: '#f59e0b', borderRadius: 2, flexShrink: 0 }} />
+            <div>
+              <div style={{ color: '#fbbf24', fontWeight: 800, fontSize: 18 }}>{s.num}</div>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* RIGHT: Login card */}
+      <div style={{
+        flex: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '40px',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 420,
+          background: 'white',
+          borderRadius: 16,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+          overflow: 'hidden',
+        }}>
+          {/* Card header */}
+          <div style={{ background: '#0f2744', padding: '24px 32px 20px', borderBottom: '3px solid #f59e0b' }}>
+            <h1 style={{ color: 'white', fontWeight: 700, fontSize: 18, margin: 0 }}>
+              {mode === 'login' ? 'Healthcare Professional Login' : 'Create Account'}
+            </h1>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 4 }}>
+              {mode === 'login' ? 'Authorised medical practitioners only' : 'Register your institutional account'}
+            </p>
+          </div>
+
+          {/* Tab switcher */}
+          <div style={{ display: 'flex', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            {(['login', 'register'] as Mode[]).map(m => (
+              <button key={m} onClick={() => { setMode(m); setErrors({}); }}
+                style={{
+                  flex: 1, padding: '11px 0', fontSize: 12, fontWeight: 700,
+                  border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                  color: mode === m ? '#0f2744' : '#94a3b8',
+                  background: mode === m ? 'white' : 'transparent',
+                  borderBottom: mode === m ? '2.5px solid #f59e0b' : '2.5px solid transparent',
+                  transition: 'all 0.2s',
+                  letterSpacing: '0.5px',
+                }}>
+                {m === 'login' ? 'LOGIN' : 'REGISTER'}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate style={{ padding: '28px 32px 32px' }}>
+            {mode === 'register' && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Full Name *</label>
+                <input className="disha-input" type="text" placeholder="Dr. Anjali Mehta" value={name} onChange={e => setName(e.target.value)} style={{ borderColor: errors.name ? '#dc2626' : undefined }} />
+                {errors.name && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>{errors.name}</p>}
+              </div>
+            )}
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Hospital / Institution *</label>
+              <input className="disha-input" type="text" placeholder="e.g. AIIMS Nagpur" value={hospitalName} onChange={e => setHospitalName(e.target.value)} style={{ borderColor: errors.hospitalName ? '#dc2626' : undefined }} />
+              {errors.hospitalName && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>{errors.hospitalName}</p>}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Official Email *</label>
+              <input id="email" className="disha-input" type="email" placeholder="doctor@aiims.in" value={email} onChange={e => setEmail(e.target.value)} style={{ borderColor: errors.email ? '#dc2626' : undefined }} />
+              {errors.email && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>{errors.email}</p>}
+            </div>
+
+            <div style={{ marginBottom: mode === 'register' ? 16 : 24 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Password *</label>
+              <input id="password" className="disha-input" type="password" placeholder={mode === 'register' ? 'Min. 6 characters' : 'Enter password'} value={password} onChange={e => setPassword(e.target.value)} style={{ borderColor: errors.password ? '#dc2626' : undefined }} />
+              {errors.password && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>{errors.password}</p>}
+            </div>
+
+            {mode === 'register' && (
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5 }}>Confirm Password *</label>
+                <input className="disha-input" type="password" placeholder="Re-enter password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={{ borderColor: errors.confirmPassword ? '#dc2626' : undefined }} />
+                {errors.confirmPassword && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 3 }}>{errors.confirmPassword}</p>}
+              </div>
+            )}
+
+            <button id="loginBtn" type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', padding: '13px', fontSize: 14 }}>
+              {loading ? 'Authenticating...' : mode === 'login' ? 'Login to DISHA →' : 'Create Account →'}
+            </button>
+
+            <div style={{ marginTop: 16, padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 11, color: '#92400e' }}>
+              ⚠️ For authorised medical personnel only. Unauthorised access is prohibited.
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
