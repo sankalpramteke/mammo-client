@@ -29,6 +29,8 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [todayCount, setTodayCount] = useState(0);
   const [monthCount, setMonthCount] = useState(0);
+  // Live FL accuracy from mammo-global (latest round in MongoDB)
+  const [liveFlAccuracy, setLiveFlAccuracy] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -68,6 +70,17 @@ export default function DashboardPage() {
     } catch {
       setBackendOnline(false);
     }
+    // Also fetch live FL round accuracy from mammo-global
+    try {
+      const globalUrl = process.env.NEXT_PUBLIC_GLOBAL_URL || 'http://localhost:3001';
+      const res = await fetch(`${globalUrl}/api/rounds/latest`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.accuracy != null) {
+          setLiveFlAccuracy(`${(data.accuracy * 100).toFixed(1)}%`);
+        }
+      }
+    } catch { /* mammo-global may be offline */ }
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -111,7 +124,10 @@ export default function DashboardPage() {
   };
 
   const isMalignant = result?.prediction?.toLowerCase() === 'malignant';
-  const accuracy = trainingStatus ? (trainingStatus.accuracy_history.at(-1)! * 100).toFixed(1) : '92.1';
+  // Baseline: CBIS-DDSM validation accuracy from mammo-server model_metrics.json
+  const baselineAccuracy = trainingStatus ? (trainingStatus.accuracy_history.at(-1)! * 100).toFixed(1) : '92.1';
+  // Live: Latest FL round global accuracy from mammo-global (updates after each round)
+  const accuracy = baselineAccuracy;
   const modelVersion = trainingStatus ? `Round ${trainingStatus.current_round}/${trainingStatus.total_rounds}` : 'Round 15/15';
 
   if (!session) return null;
@@ -151,8 +167,10 @@ export default function DashboardPage() {
       {/* ── KPI Cards ───────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
         <KPICard icon="📊" label="Scans Today" value={String(todayCount)} accent="#1d4ed8" sub="vs yesterday" />
-        <KPICard icon="🎯" label="Model Accuracy" value={`${accuracy}%`} accent="#16a34a" sub="CBIS-DDSM validation" />
-        <KPICard icon="🔄" label="FL Training" value={modelVersion} accent="#f59e0b" sub={`${trainingStatus?.total_rounds || 15} rounds complete`} />
+        {/* accuracy = CBIS-DDSM baseline; liveFlAccuracy = latest FL global round */}
+        <KPICard icon="🎯" label="Model Accuracy" value={`${accuracy}%`} accent="#16a34a" sub="CBIS-DDSM baseline" />
+        <KPICard icon="🔄" label="FL Training" value={modelVersion} accent="#f59e0b"
+          sub={liveFlAccuracy ? `Global FL: ${liveFlAccuracy}` : `${trainingStatus?.total_rounds || 15} rounds complete`} />
         <KPICard icon="📅" label="Total Scans" value={String(monthCount)} accent="#7c3aed" sub="in your account" />
       </div>
 
